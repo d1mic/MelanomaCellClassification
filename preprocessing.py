@@ -4,6 +4,7 @@ from scipy import stats
 from sklearn.model_selection import train_test_split
 from sklearn import tree
 from sklearn.metrics import confusion_matrix
+from sklearn.neighbors import LocalOutlierFactor, KNeighborsClassifier
 import graphviz
 
 
@@ -40,8 +41,12 @@ def seperate_data_class(df):
 def decisionTree(x_train, x_test, y_train, y_test, criteria, depth=None, generateGraph=[]):
     clf = tree.DecisionTreeClassifier(criterion=criteria, max_depth=depth)
     clf.fit(x_train,y_train.ravel())
-    print('Train acc: {}'.format(clf.score(x_train, y_train)))
-    print('Test acc: {}'.format(clf.score(x_test, y_test)))
+
+    print("---------------------------------------------\n")
+    print("Rezultati za stablo: [" + str(criteria) + " " + str(depth) + "] \n")
+
+    print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
+    print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
 
     y_predict_train = clf.predict(x_train)
     y_predict_test = clf.predict(x_test)
@@ -59,11 +64,35 @@ def decisionTree(x_train, x_test, y_train, y_test, criteria, depth=None, generat
             depth = "full"
         graph.render("dtGraph/DecisionTree_" + criteria + "_" + str(depth))
 
-'''
-def find_outliers(df):
-    outliers = df[(np.abs(stats.zscore(df)) > 3).all(axis=1)]
-    return outliers
-'''
+def knn(x_train, x_test, y_train, y_test, n_neigh, weights='uniform', algorithm = 'auto'):
+    clf = KNeighborsClassifier(n_neigh, weights, algorithm)
+    clf.fit(x_train,y_train.ravel())
+
+    print("---------------------------------------------\n")
+    print("Rezultati za knn: [" + str(n_neigh) + " " + str(weights) + " " + str(algorithm) + "] \n")
+
+    print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
+    print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
+
+    y_predict_train = clf.predict(x_train)
+    y_predict_test = clf.predict(x_test)
+    print("Matrica kofuzije trening vrednosti: \n" + str(confusion_matrix(y_train, y_predict_train)))
+    print("Matrica kofuzije test vrednosti: \n" + str(confusion_matrix(y_test, y_predict_test)))
+
+    
+
+def find_outlier_columns(df):
+    outlier_res = (df.drop(columns="Class")).T
+    outliers = outlier_res[(np.abs(stats.zscore(outlier_res)) >= 3).any(axis=1)]
+    outlier_columns = list(outliers.T.columns)
+    outlier_columns.append('Class')
+    return df[outlier_columns]
+
+def checkNaNvalues(df):
+    if df.isnull().values.any():
+        print("NaN vrednosti postoje\n")
+    else:
+        print("NaN vrednosti ne postoje\n")
 
 def main():
 
@@ -90,25 +119,33 @@ def main():
     result_df = pd.concat([first_df, second_df], ignore_index=True)
     print("Dimenzija spojene matrice: " + str(result_df.shape) + "\n")
     
+    # Checking NaN values
+    checkNaNvalues(result_df)
 
     # Droping zeros
     result_df.drop(columns=columns_to_remove, inplace=True)
     print("Dimenzija posle izbacenih nula: " + str(result_df.shape) + "\n")
 
-    # result_df.drop(columns="Class", inplace=True)
-    # outliers = find_outliers(result_df.T)
-    
+    # Finding outlier columns and setting them up for analisys
+    outliers_df = find_outlier_columns(result_df)
+    print("Dimenzija tabele autlajera: " + str(outliers_df.shape) + "\n")
+
     # Mixing everything
     result_df = result_df.sample(frac=1).reset_index(drop=True)
+    outliers_df = outliers_df.sample(frac=1).reset_index(drop=True)
 
     # Getting attribute names for graph
     columns_without_class = result_df.loc[:, result_df.columns != 'Class'].columns.tolist()
+    outlier_columns_without_class = outliers_df.loc[:, outliers_df.columns != 'Class'].columns.tolist()
+
     
     # Separete data and class values
     x,y = seperate_data_class(result_df)
+    out_x, out_y = seperate_data_class(outliers_df)
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.4)
-    
+    ox_train, ox_test, oy_train, oy_test = train_test_split(out_x, out_y, test_size=0.4)
+
     # Decision tree testing
     #decisionTree(x_train, x_test, y_train, y_test, 'gini', None, columns_without_class)
     #decisionTree(x_train, x_test, y_train, y_test, 'entropy', None, columns_without_class)
@@ -116,8 +153,25 @@ def main():
     #decisionTree(x_train, x_test, y_train, y_test, 'entropy', 6, columns_without_class)
     #decisionTree(x_train, x_test, y_train, y_test, 'gini', 4, columns_without_class)
     #decisionTree(x_train, x_test, y_train, y_test, 'entropy', 4, columns_without_class)
- 
     
+    #decisionTree(ox_train, ox_test, oy_train, oy_test, 'gini', 4, outlier_columns_without_class)
+    
+
+    # Poredjenje algoritama
+    #knn(x_train, x_test, y_train, y_test, 5, 'uniform', 'kd_tree')
+    #knn(x_train, x_test, y_train, y_test, 5, 'uniform', 'ball_tree')
+    #knn(x_train, x_test, y_train, y_test, 5, 'uniform')
+    #knn(x_train, x_test, y_train, y_test, 5, 'uniform', 'brute')
+
+    # Poredjenje broja suseda
+    #knn(x_train, x_test, y_train, y_test, 3)
+    #knn(x_train, x_test, y_train, y_test, 5)
+    #knn(x_train, x_test, y_train, y_test, 10)
+    #knn(x_train, x_test, y_train, y_test, 15)
+
+
+    
+
 
 if __name__ == "__main__":
     main()
