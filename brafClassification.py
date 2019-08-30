@@ -7,9 +7,17 @@ from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import LocalOutlierFactor, KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import BaggingClassifier,AdaBoostClassifier
+from joblib import dump, load
+import os
 import graphviz
 import time
 
+
+"""
+Cuva model
+"""
+def save_model(clf, metod):
+    dump(clf, os.path.join('models', metod + '.joblib'))
 
 """
 Nalazi nula kolone i eliminise ih u zavisnosti od odabranog nacina - unija ili presek
@@ -52,6 +60,7 @@ def decisionTree(x_train, x_test, y_train, y_test, criteria, depth=None, generat
     print("Kreiranje klasifikatora ... \n")
     clf = tree.DecisionTreeClassifier(criterion=criteria, max_depth=depth)
     clf.fit(x_train,y_train.ravel())
+    save_model(clf, "tree_" + str(criteria) + "_" + str(depth))
     print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
     print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
     y_predict_train = clf.predict(x_train)
@@ -83,6 +92,7 @@ def knn(x_train, x_test, y_train, y_test, n_neigh, weights='uniform', algorithm 
     print("Kreiranje klasifikatora ... \n")
     clf = KNeighborsClassifier(n_neigh, weights, algorithm)
     clf.fit(x_train,y_train.ravel())
+    save_model(clf, "knn_" + str(n_neigh) + "_" + str(weights) + "_" + str(algorithm))
     print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
     print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
     y_predict_train = clf.predict(x_train)
@@ -103,6 +113,7 @@ def svm(x_train, x_test, y_train, y_test, kernel, gamma='auto'):
     print("Kreiranje klasifikatora ... \n")
     clf = SVC(kernel=kernel, gamma=gamma)
     clf.fit(x_train,y_train.ravel())
+    save_model(clf, "svm_" + str(kernel) + "_" + str(gamma))
     print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
     print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
     y_predict_train = clf.predict(x_train)
@@ -132,6 +143,7 @@ def bagging(x_train, x_test, y_train, y_test, n, classifier=None):
 
     clf = BaggingClassifier(unit, n_estimators=n)
     clf.fit(x_train,y_train.ravel())
+    save_model(clf, "bagging_" + str(classifier) + "_" + str(n))
     print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
     print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
     y_predict_train = clf.predict(x_train)
@@ -162,6 +174,7 @@ def boosting(x_train, x_test, y_train, y_test, learning=1.0, classifier=None):
     
     clf = AdaBoostClassifier(unit, learning_rate=learning, algorithm = alg)
     clf.fit(x_train,y_train.ravel())
+    save_model(clf, "boosting_" + str(classifier) + "_" + str(learning))
     print('Trening tacnost: {}'.format(clf.score(x_train, y_train)))
     print('Test tacnost: {}'.format(clf.score(x_test, y_test)))
     y_predict_train = clf.predict(x_train)
